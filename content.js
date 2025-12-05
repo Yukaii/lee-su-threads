@@ -564,15 +564,8 @@
           profileCache.set(username, data);
         }
       }
-    }).catch(() => {
-      // Fallback for Chrome callback style
-      browserAPI.runtime.sendMessage({ type: 'GET_CACHED_PROFILES' }, (cachedProfiles) => {
-        if (cachedProfiles) {
-          for (const [username, data] of Object.entries(cachedProfiles)) {
-            profileCache.set(username, data);
-          }
-        }
-      });
+    }).catch((err) => {
+      console.warn('[Threads Extractor] Failed to load cached profiles:', err);
     });
 
     // Load cached user IDs and pass to injected script
@@ -586,19 +579,8 @@
         // Pass to injected script
         window.postMessage({ type: 'threads-load-userid-cache', data: userIdMap }, '*');
       }
-    }).catch(() => {
-      // Fallback for Chrome callback style
-      browserAPI.runtime.sendMessage({ type: 'GET_USER_ID_CACHE' }, (cachedUserIds) => {
-        if (cachedUserIds && Object.keys(cachedUserIds).length > 0) {
-          const userIdMap = {};
-          for (const [username, data] of Object.entries(cachedUserIds)) {
-            userIdMap[username] = data.userId;
-          }
-          console.log(`[Threads Extractor] Loaded ${Object.keys(userIdMap).length} cached user IDs`);
-          // Pass to injected script
-          window.postMessage({ type: 'threads-load-userid-cache', data: userIdMap }, '*');
-        }
-      });
+    }).catch((err) => {
+      console.warn('[Threads Extractor] Failed to load cached user IDs:', err);
     });
 
     // Enable auto-fetch after initial delay (wait for bulk-route-definitions to load)

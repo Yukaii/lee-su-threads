@@ -24,18 +24,8 @@ document.addEventListener('DOMContentLoaded', () => {
       sessionCountEl.textContent = sessionCount;
 
       renderProfileList();
-    }).catch(() => {
-      // Fallback for Chrome callback style
-      browserAPI.storage.local.get(['profileCache', 'sessionCount'], (result) => {
-        profiles = result.profileCache || {};
-        const count = Object.keys(profiles).length;
-        const sessionCount = result.sessionCount || 0;
-
-        profileCountEl.textContent = count;
-        sessionCountEl.textContent = sessionCount;
-
-        renderProfileList();
-      });
+    }).catch((err) => {
+      console.error('Failed to load profiles:', err);
     });
   }
 
@@ -116,18 +106,16 @@ document.addEventListener('DOMContentLoaded', () => {
   // Clear cache
   clearBtn.addEventListener('click', () => {
     if (confirm('Are you sure you want to clear all cached profiles?')) {
-      browserAPI.storage.local.set({ profileCache: {}, sessionCount: 0 }).then(() => {
-        profiles = {};
-        loadProfiles();
-        showToast('Cache cleared!');
-      }).catch(() => {
-        // Fallback for Chrome callback style
-        browserAPI.storage.local.set({ profileCache: {}, sessionCount: 0 }, () => {
+      browserAPI.storage.local.set({ profileCache: {}, sessionCount: 0 })
+        .then(() => {
           profiles = {};
           loadProfiles();
           showToast('Cache cleared!');
+        })
+        .catch((err) => {
+          console.error('Failed to clear cache:', err);
+          showToast('Failed to clear cache', true);
         });
-      });
     }
   });
 

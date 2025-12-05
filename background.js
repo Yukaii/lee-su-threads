@@ -5,8 +5,8 @@ const browserAPI = typeof browser !== 'undefined' ? browser : chrome;
 
 const USER_ID_CACHE_MAX_AGE = 30 * 24 * 60 * 60 * 1000; // 30 days for user ID mapping
 
-// Listen for messages from content script
-browserAPI.runtime.onMessage.addListener((message, sender, sendResponse) => {
+// Handle async message responses for both Chrome and Firefox
+function handleAsyncMessage(message, sender, sendResponse) {
   if (message.type === 'PROFILE_INFO_EXTRACTED') {
     console.log('[Threads Extractor] Profile info received:', message.data);
 
@@ -22,6 +22,7 @@ browserAPI.runtime.onMessage.addListener((message, sender, sendResponse) => {
         browserAPI.storage.local.set({ profileCache: cache });
       }
     });
+    return false;
   }
 
   if (message.type === 'GET_CACHED_PROFILES') {
@@ -44,6 +45,7 @@ browserAPI.runtime.onMessage.addListener((message, sender, sendResponse) => {
       }
       browserAPI.storage.local.set({ userIdCache: cache });
     });
+    return false;
   }
 
   // Get cached user IDs
@@ -51,9 +53,14 @@ browserAPI.runtime.onMessage.addListener((message, sender, sendResponse) => {
     browserAPI.storage.local.get(['userIdCache']).then((result) => {
       sendResponse(result.userIdCache || {});
     });
-    return true;
+    return true; // Keep channel open for async response
   }
-});
+
+  return false;
+}
+
+// Listen for messages from content script
+browserAPI.runtime.onMessage.addListener(handleAsyncMessage);
 
 // Clean up old cache entries on startup
 browserAPI.runtime.onStartup.addListener(() => {

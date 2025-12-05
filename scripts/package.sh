@@ -32,7 +32,7 @@ FILES=(
 
 # Create a temporary directory for building
 TEMP_DIR=$(mktemp -d)
-trap "rm -rf $TEMP_DIR" EXIT
+trap "rm -rf '$TEMP_DIR'" EXIT
 
 # ========== Chrome Build ==========
 echo ""
