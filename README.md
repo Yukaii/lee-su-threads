@@ -1,99 +1,86 @@
 # Lee-Su-Threads 你是誰
 
-A Chrome extension that extracts "About this profile" information from Threads.com without needing to visit each user's profile page.
+一個 Chrome 擴充功能，自動顯示 Threads 貼文作者的地點資訊，不需要點進每個人的個人檔案。
 
-## Features
+> **[English](#english)** below
 
-- **Automatic Extraction**: Intercepts API responses when profile info is loaded on the feed
-- **Floating Panel**: Shows all extracted profiles in a draggable panel on the page
-- **Profile Badges**: Displays location and join date directly on posts in the feed
-- **Export Data**: Export all extracted profiles as JSON
-- **Clipboard Copy**: Quick copy all profile data to clipboard
-- **Persistent Cache**: Profiles are cached for 24 hours
+## 功能
 
-## Extracted Information
+- **自動擷取**：瀏覽動態時自動載入作者的地點資訊
+- **地點標籤**：在貼文時間旁顯示作者所在地點
+- **快取機制**：已擷取的資料會快取 24 小時
+- **匯出資料**：可將所有資料匯出為 JSON
+- **速率限制保護**：被 Threads 限制時會自動暫停並提醒
 
-For each profile, the extension captures:
+## 擷取的資訊
 
-- **Display Name**: The user's full name
-- **Username**: The @handle
-- **Location**: "Based in" location (e.g., "Taiwan")
-- **Join Date**: When they joined (e.g., "March 2024 · 100M+")
-- **Profile Image**: Avatar URL
+- **地點**：作者設定的所在地（例如：台灣）
+- **加入時間**：加入 Threads 的時間
 
-## Installation
+## 安裝方式
 
-### Developer Mode (Recommended for now)
+1. 開啟 Chrome，前往 `chrome://extensions/`
+2. 開啟右上角的「**開發人員模式**」
+3. 點擊「**載入未封裝項目**」
+4. 選擇 `lee-su-thread` 資料夾
+5. 擴充功能圖示會出現在工具列
+
+## 使用方式
+
+1. 前往 [threads.com](https://www.threads.com)
+2. 正常瀏覽動態
+3. 擴充功能會自動在貼文旁顯示地點標籤
+4. 點擊擴充功能圖示可查看所有已擷取的資料
+
+## 隱私說明
+
+- 所有資料僅儲存在本機 Chrome 儲存空間
+- 不會將任何資料傳送到外部伺服器
+- 快取會在 24 小時後自動清除
+
+## 限制
+
+- 需要 Threads 載入個人資料 API 才能擷取（通常瀏覽動態時會自動載入）
+- 若 Threads 更改 API 格式，可能需要更新擴充功能
+- 部分使用者可能未設定地點資訊
+
+---
+
+<a name="english"></a>
+
+## English
+
+A Chrome extension that automatically displays location info for Threads post authors without visiting each profile.
+
+### Features
+
+- **Auto-fetch**: Automatically loads author location while browsing the feed
+- **Location badges**: Shows location next to post timestamp
+- **Caching**: Extracted data is cached for 24 hours
+- **Export**: Export all data as JSON
+- **Rate limit protection**: Auto-pauses and notifies when rate limited by Threads
+
+### Installation
 
 1. Open Chrome and navigate to `chrome://extensions/`
 2. Enable **Developer mode** (toggle in top-right corner)
 3. Click **Load unpacked**
-4. Select the `thread-my-home` folder
+4. Select the `lee-su-thread` folder
 5. The extension icon should appear in your toolbar
 
 ### Usage
 
 1. Navigate to [threads.com](https://www.threads.com)
 2. Browse your feed normally
-3. When Threads loads "About this profile" data (usually when you interact with posts), the extension captures it
-4. View extracted profiles in:
-   - The floating panel (bottom-right of the page)
-   - The extension popup (click the extension icon)
-5. Export or copy data as needed
+3. Location badges will automatically appear next to posts
+4. Click the extension icon to view all extracted profiles
 
-## How It Works
-
-The extension intercepts network requests to Threads' internal API endpoint:
-
-```
-/async/wbloks/fetch/?appid=com.bloks.www.text_post_app.about_this_profile_async_action
-```
-
-When this endpoint returns data, the extension parses the Bloks response format and extracts:
-
-- User name and handle from `bk.components.RichText`
-- Location and join date from `bk.components.Text` components
-- Profile image from `bk.components.Image`
-
-## File Structure
-
-```
-thread-my-home/
-├── manifest.json      # Extension manifest (MV3)
-├── background.js      # Service worker for caching
-├── content.js         # Content script for UI
-├── injected.js        # Network interceptor (injected into page)
-├── styles.css         # Styles for badges and panel
-├── popup.html         # Extension popup UI
-├── popup.js           # Popup logic
-├── icons/
-│   ├── icon16.png
-│   ├── icon48.png
-│   └── icon128.png
-└── README.md
-```
-
-## Privacy
+### Privacy
 
 - All data is stored locally in Chrome's storage
 - No data is sent to external servers
 - Cache is automatically cleared after 24 hours
 
-## Limitations
-
-- Only captures profile info when Threads loads it (you may need to interact with posts)
-- Threads may change their API format, which could break parsing
-- Some profiles may not have location or other optional fields
-
-## Development
-
-To modify the extension:
-
-1. Edit the source files
-2. Go to `chrome://extensions/`
-3. Click the refresh icon on the extension card
-4. Reload the Threads page
-
 ## License
 
-MIT License - Feel free to modify and distribute.
+MIT License
