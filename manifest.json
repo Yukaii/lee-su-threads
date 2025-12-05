@@ -4,8 +4,7 @@
   "version": "0.2.0",
   "description": "你是誰？自動顯示 Threads 貼文作者的地點資訊",
   "permissions": [
-    "storage",
-    "activeTab"
+    "storage"
   ],
   "host_permissions": [
     "https://www.threads.com/*"
