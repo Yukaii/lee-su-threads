@@ -1,6 +1,5 @@
 // Content script for Threads Profile Info Extractor
 import { parseJoinedDate, isNewUser } from './lib/dateParser.js';
-import { escapeHtml } from './lib/utils.js';
 
 'use strict';
 
@@ -157,7 +156,7 @@ function createProfileBadge(profileInfo) {
   const newLabel = browserAPI.i18n.getMessage('newUser') || 'NEW';
 
   if (profileInfo.location) {
-    badge.textContent = escapeHtml(profileInfo.location);
+    badge.textContent = profileInfo.location;
     badge.title = `${joinedLabel}: ${profileInfo.joined || 'Unknown'}`;
   } else {
     // Location not available
@@ -177,7 +176,6 @@ function createProfileBadge(profileInfo) {
   return badge;
 }
 
-// escapeHtml is imported from lib/utils.js
 
 // Auto-fetch profile info for a username
 async function autoFetchProfile(username, btn) {
