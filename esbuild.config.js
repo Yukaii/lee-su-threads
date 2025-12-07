@@ -71,10 +71,14 @@ async function build() {
     // First, build the JavaScript bundles to dist/shared
     if (isWatch) {
       const ctx = await esbuild.context(buildOptions);
+      // Perform initial build before starting watch mode
+      await ctx.rebuild();
+      console.log('✓ Initial build complete');
+      // Copy static files after initial build completes
+      await copyStaticFiles();
+      // Now start watching for changes
       await ctx.watch();
       console.log('👀 Watching for changes...');
-      // In watch mode, copy files after initial build
-      await copyStaticFiles();
     } else {
       await esbuild.build(buildOptions);
       console.log('✓ JavaScript bundles built');

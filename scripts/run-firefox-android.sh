@@ -55,12 +55,22 @@ else
 
     # Check if user entered a number
     if [[ "$SELECTION" =~ ^[0-9]+$ ]]; then
+        # Validate number is within range
+        if [ "$SELECTION" -lt 1 ] || [ "$SELECTION" -gt "$DEVICE_COUNT" ]; then
+            echo "❌ Invalid selection: must be between 1 and $DEVICE_COUNT"
+            exit 1
+        fi
         DEVICE_ID=$(echo "$DEVICES" | sed -n "${SELECTION}p")
         if [ -z "$DEVICE_ID" ]; then
             echo "❌ Invalid selection"
             exit 1
         fi
     else
+        # User entered a device ID directly - basic validation
+        if [[ ! "$SELECTION" =~ ^[a-zA-Z0-9._-]+$ ]]; then
+            echo "❌ Invalid device ID format"
+            exit 1
+        fi
         DEVICE_ID="$SELECTION"
     fi
 
