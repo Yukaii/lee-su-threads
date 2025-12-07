@@ -105,3 +105,24 @@ npm run test:watch    # Run tests in watch mode
 - Shared logic goes in `src/lib/` and can be imported by multiple files
 - esbuild bundles everything - no more code duplication!
 - Source files are in `src/`, built files in `dist/`
+
+### Security Guidelines (Firefox Compliance)
+
+**NEVER use `innerHTML` for dynamic content** - Firefox flags this as a security warning.
+
+Instead, use safe DOM methods:
+- ✅ `element.textContent = "text"` - for plain text
+- ✅ `document.createElement()` + `appendChild()` - for structured HTML
+- ✅ `element.setAttribute()` - for attributes
+- ❌ `element.innerHTML = ...` - **AVOID THIS**
+
+Example:
+```javascript
+// ❌ BAD - triggers Firefox warnings
+element.innerHTML = `<span>${username}</span>`;
+
+// ✅ GOOD - safe and compliant
+const span = document.createElement('span');
+span.textContent = username;
+element.appendChild(span);
+```
