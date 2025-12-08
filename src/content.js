@@ -401,12 +401,34 @@ function addFetchButtons() {
     // Skip if we already have this profile cached and displayed
     if (profileCache.has(username) && postContainer.querySelector('.threads-profile-info-badge')) return;
 
-    // Create the fetch button
+    // If we have cached data for this user, display badge directly without creating button
+    if (profileCache.has(username)) {
+      const timeParent = timeEl.closest('span') || timeEl.parentElement;
+      if (timeParent?.parentElement) {
+        timeParent.parentElement.style.alignItems = 'center';
+        const badge = createProfileBadge(profileCache.get(username));
+        timeParent.parentElement.insertBefore(badge, timeParent.nextSibling);
+      }
+      return;
+    }
+
+    // Create the fetch button for uncached users
     const btn = document.createElement('button');
     btn.className = 'threads-fetch-btn';
     btn.textContent = '📍';
     btn.title = `Get location for @${username}`;
     btn.setAttribute('data-username', username);
+
+    // Insert button after the time element
+    const timeParent = timeEl.closest('span') || timeEl.parentElement;
+    if (timeParent) {
+      // Ensure vertical alignment of the row
+      if (timeParent.parentElement) {
+        timeParent.parentElement.style.alignItems = 'center';
+      }
+
+      timeParent.parentElement?.insertBefore(btn, timeParent.nextSibling);
+    }
 
     btn.addEventListener('click', async (e) => {
       e.preventDefault();
@@ -482,20 +504,8 @@ function addFetchButtons() {
       }
     });
 
-    // Insert button after the time element
-    // Find the parent that contains the time, and insert after it
-    const timeParent = timeEl.closest('span') || timeEl.parentElement;
-    if (timeParent) {
-      // Ensure vertical alignment of the row
-      if (timeParent.parentElement) {
-        timeParent.parentElement.style.alignItems = 'center';
-      }
-
-      timeParent.parentElement?.insertBefore(btn, timeParent.nextSibling);
-
-      // Auto-fetch: observe button for visibility
-      visibilityObserver.observe(btn);
-    }
+    // Auto-fetch: observe button for visibility
+    visibilityObserver.observe(btn);
   });
 }
 
