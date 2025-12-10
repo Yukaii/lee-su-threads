@@ -66,6 +66,97 @@ window.addEventListener('message', (event) => {
   }
 });
 
+// Store the last loaded users lists so we can re-inject when dialog reopens
+// We store both followers and following separately
+let lastFollowersList = [];
+let lastFollowingList = [];
+let lastFriendshipsList = []; // Fallback for when we can't determine which
+
+// Listen for followers/following list loaded from injected script
+window.addEventListener('threads-friendships-list-loaded', (event) => {
+  const users = event.detail?.users || [];
+  console.log(`[Threads Extractor] Friendships list loaded with ${users.length} users`);
+
+  // Always update the fallback list
+  lastFriendshipsList = users;
+
+  // Try to determine if this is followers or following by checking the active tab
+  setTimeout(() => {
+    const tabs = document.querySelectorAll('[role="tab"]');
+    let isFollowers = false;
+    let isFollowing = false;
+
+    tabs.forEach(tab => {
+      if (tab.getAttribute('aria-selected') === 'true') {
+        // Find the div with aria-label inside the tab
+        const labelDiv = tab.querySelector('[aria-label]');
+        const ariaLabel = labelDiv?.getAttribute('aria-label') || '';
+
+        if (ariaLabel === '粉絲' || ariaLabel === 'Followers') {
+          isFollowers = true;
+        }
+        if (ariaLabel === '追蹤中' || ariaLabel === 'Following') {
+          isFollowing = true;
+        }
+      }
+    });
+
+    if (isFollowers) {
+      // Append new users to existing list (for pagination)
+      const existingUsernames = new Set(lastFollowersList.map(u => u.username));
+      const newUsers = users.filter(u => !existingUsernames.has(u.username));
+      if (newUsers.length > 0) {
+        lastFollowersList = [...lastFollowersList, ...newUsers];
+      }
+    } else if (isFollowing) {
+      // Append new users to existing list (for pagination)
+      const existingUsernames = new Set(lastFollowingList.map(u => u.username));
+      const newUsers = users.filter(u => !existingUsernames.has(u.username));
+      if (newUsers.length > 0) {
+        lastFollowingList = [...lastFollowingList, ...newUsers];
+      }
+    }
+  }, 100);
+
+  // Use MutationObserver to wait for DOM to render
+  waitForFriendshipsDOM(users);
+});
+
+// Wait for friendships DOM to render, then inject badges
+function waitForFriendshipsDOM(users) {
+  let attempts = 0;
+  const maxAttempts = 20; // Try for up to 10 seconds
+
+  const tryInject = () => {
+    attempts++;
+
+    // Check if any user links are now in the DOM
+    // Try multiple users from the list to handle pagination
+    let foundAny = false;
+    for (let i = 0; i < Math.min(3, users.length); i++) {
+      const sampleUsername = users[i]?.username;
+      if (!sampleUsername) continue;
+
+      const links = document.querySelectorAll(`a[href="/@${sampleUsername}"]`);
+
+      if (links.length > 0) {
+        foundAny = true;
+        break;
+      }
+    }
+
+    if (foundAny) {
+      // DOM is ready! Inject badges for all users
+      injectLocationBadgesIntoFriendshipsList(users);
+    } else if (attempts < maxAttempts) {
+      // Try again in 500ms
+      setTimeout(tryInject, 500);
+    }
+  };
+
+  tryInject();
+}
+
 // Show rate limit toast notification
 function showRateLimitToast() {
   // Remove existing toast if any
@@ -116,6 +207,258 @@ function showRateLimitToast() {
       toast.remove();
     }
   }, RATE_LIMIT_COOLDOWN_MS);
+}
+
+// Inject appropriate location UI for a user (badge, empty indicator, or fetch button)
+function injectLocationUIForUser(username, userId) {
+  const profileInfo = profileCache.get(username);
+
+  if (profileInfo) {
+    if (profileInfo.location) {
+      // Has cached data with location - display it
+      injectLocationBadgeIntoUserRow(username, profileInfo);
+    } else {
+      // Has cached data but no location - show empty indicator
+      injectEmptyLocationIntoUserRow(username);
+    }
+  } else if (userId) {
+    // No cached data - add a button to fetch on demand
+    injectLocationButtonIntoUserRow(username, userId);
+  }
+}
+
+// Inject location badges into followers/following list
+function injectLocationBadgesIntoFriendshipsList(users) {
+  for (const user of users) {
+    const { pk, username } = user;
+    injectLocationUIForUser(username, pk);
+  }
+}
+
+// Inject a fetch location button into a specific user row
+function injectLocationButtonIntoUserRow(username, userId) {
+  // Find all links to this user's profile
+  const profileLinks = document.querySelectorAll(`a[href="/@${username}"]`);
+
+  profileLinks.forEach((link) => {
+    // Navigate up to find the user row container
+    let userRow = link;
+    for (let i = 0; i < 10 && userRow; i++) {
+      if (userRow.querySelector && userRow.textContent.includes(username)) {
+        // Check if we already added a button or badge
+        if (userRow.querySelector('.threads-friendships-fetch-btn') ||
+            userRow.querySelector('.threads-friendships-location-badge')) {
+          return;
+        }
+
+        // Find the container to insert button
+        const insertTarget = findUsernameContainer(userRow, username);
+        if (insertTarget) {
+          // Find the follow button to insert before it
+          const followButton = insertTarget.querySelector('[role="button"]');
+          if (followButton) {
+            const btn = createFriendshipsLocationButton(username, userId);
+            insertTarget.insertBefore(btn, followButton);
+            break;
+          }
+        }
+      }
+      userRow = userRow.parentElement;
+    }
+  });
+}
+
+// Find the parent container that has both the name section and follow button
+function findUsernameContainer(container, username) {
+  // Find the profile link first
+  const profileLink = container.querySelector(`a[href="/@${username}"]`);
+  if (!profileLink) {
+    return null;
+  }
+
+  // Navigate up from the profile link to find the container that has a follow button sibling
+  let current = profileLink;
+
+  for (let i = 0; i < 15 && current; i++) {
+    // Check if this element's parent contains a follow button as a direct child
+    const parent = current.parentElement;
+    if (parent) {
+      const followButton = Array.from(parent.children).find(child =>
+        child.getAttribute && child.getAttribute('role') === 'button' &&
+        child.textContent.includes('追蹤') // "Follow" in Chinese
+      );
+
+      if (followButton) {
+        return parent;
+      }
+    }
+    current = current.parentElement;
+  }
+
+  return null;
+}
+
+// Create a fetch location button for friendships list
+function createFriendshipsLocationButton(username, userId) {
+  const btn = document.createElement('button');
+  btn.className = 'threads-friendships-fetch-btn';
+  btn.textContent = '📍';
+  btn.title = `Get location for @${username}`;
+  btn.setAttribute('data-username', username);
+  btn.setAttribute('data-userid', userId);
+
+  btn.addEventListener('click', async (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    btn.disabled = true;
+    btn.textContent = '⏳';
+
+    // Fetch profile info
+    const fetchRequestId = Math.random().toString(36).substring(7);
+    const profileInfo = await new Promise((resolve) => {
+      const handler = (event) => {
+        if (event.data?.type === 'threads-fetch-response' && event.data?.requestId === fetchRequestId) {
+          window.removeEventListener('message', handler);
+          resolve(event.data.result);
+        }
+      };
+      window.addEventListener('message', handler);
+
+      window.postMessage({
+        type: 'threads-fetch-request',
+        requestId: fetchRequestId,
+        userId: userId
+      }, '*');
+
+      setTimeout(() => {
+        window.removeEventListener('message', handler);
+        resolve(null);
+      }, 10000);
+    });
+
+    if (profileInfo && !profileInfo._rateLimited) {
+      profileCache.set(username, profileInfo);
+
+      // Replace button with badge
+      if (profileInfo.location) {
+        const badge = createLocationBadge(profileInfo);
+        btn.parentElement.replaceChild(badge, btn);
+      } else {
+        // No location data
+        btn.textContent = '—';
+        btn.title = 'No location available';
+        btn.disabled = true;
+      }
+    } else if (profileInfo?._rateLimited) {
+      btn.textContent = '⏸';
+      btn.title = 'Rate limited. Try again later.';
+      btn.disabled = false;
+    } else {
+      btn.textContent = '🔄';
+      btn.title = 'Failed. Click to retry.';
+      btn.disabled = false;
+    }
+  });
+
+  return btn;
+}
+
+// Inject location badge into a specific user row in followers/following list
+function injectLocationBadgeIntoUserRow(username, profileInfo) {
+  // Find all links to this user's profile
+  const profileLinks = document.querySelectorAll(`a[href="/@${username}"]`);
+
+  profileLinks.forEach(link => {
+    // Navigate up to find the user row container
+    let userRow = link;
+    for (let i = 0; i < 10 && userRow; i++) {
+      // Look for the container that has the username
+      if (userRow.querySelector && userRow.textContent.includes(username)) {
+        // Check if we already added a badge
+        if (userRow.querySelector('.threads-friendships-location-badge')) {
+          return;
+        }
+
+        // Find where to insert the badge
+        const insertTarget = findUsernameContainer(userRow, username);
+        if (insertTarget) {
+          // Find the follow button to insert before it
+          const followButton = insertTarget.querySelector('[role="button"]');
+          if (followButton) {
+            const badge = createLocationBadge(profileInfo);
+            insertTarget.insertBefore(badge, followButton);
+            break;
+          }
+        }
+      }
+      userRow = userRow.parentElement;
+    }
+  });
+}
+
+// Inject empty location indicator into a specific user row in followers/following list
+function injectEmptyLocationIntoUserRow(username) {
+  // Find all links to this user's profile
+  const profileLinks = document.querySelectorAll(`a[href="/@${username}"]`);
+
+  profileLinks.forEach(link => {
+    // Navigate up to find the user row container
+    let userRow = link;
+    for (let i = 0; i < 10 && userRow; i++) {
+      // Look for the container that has the username
+      if (userRow.querySelector && userRow.textContent.includes(username)) {
+        // Check if we already added something
+        if (userRow.querySelector('.threads-friendships-location-badge') ||
+            userRow.querySelector('.threads-friendships-fetch-btn')) {
+          return;
+        }
+
+        // Find where to insert the indicator
+        const insertTarget = findUsernameContainer(userRow, username);
+        if (insertTarget) {
+          // Find the follow button to insert before it
+          const followButton = insertTarget.querySelector('[role="button"]');
+          if (followButton) {
+            const emptyIndicator = createEmptyLocationIndicator(username);
+            insertTarget.insertBefore(emptyIndicator, followButton);
+            break;
+          }
+        }
+      }
+      userRow = userRow.parentElement;
+    }
+  });
+}
+
+// Create an empty location indicator (when cached but no location available)
+function createEmptyLocationIndicator(username) {
+  const indicator = document.createElement('button');
+  indicator.className = 'threads-friendships-fetch-btn'; // Reuse same styling
+  indicator.textContent = '➖';
+  indicator.title = `No location available for @${username}`;
+  indicator.disabled = true;
+  indicator.style.cursor = 'default';
+  indicator.style.opacity = '0.4';
+  return indicator;
+}
+
+// Create a location badge for friendships list
+function createLocationBadge(profileInfo) {
+  const badge = document.createElement('span');
+  badge.className = 'threads-friendships-location-badge';
+
+  const locationText = document.createElement('span');
+  locationText.textContent = profileInfo.location;
+
+  badge.appendChild(locationText);
+
+  if (profileInfo.joined) {
+    const joinedLabel = browserAPI.i18n.getMessage('joined') || 'Joined';
+    badge.title = `${joinedLabel}: ${profileInfo.joined}`;
+  }
+
+  return badge;
 }
 
 // Create and display profile info badge
@@ -467,7 +810,6 @@ function addFetchButtons() {
       });
 
       if (userId) {
-        console.log(`[Threads Extractor] Found user ID for @${username}: ${userId}`);
 
         // Request profile fetch
         const fetchRequestId = Math.random().toString(36).substring(7);
@@ -501,7 +843,6 @@ function addFetchButtons() {
           btn.disabled = false;
         }
       } else {
-        console.log(`[Threads Extractor] Could not find user ID for @${username}`);
         btn.textContent = '❓';
         btn.title = 'User ID not found. Try scrolling or clicking on their profile first.';
         btn.disabled = false;
@@ -574,13 +915,110 @@ function findUserIdInObject(obj, targetUsername, depth = 0) {
   return null;
 }
 
-// Observe DOM for new posts
+// Observe DOM for new posts AND for friendships dialog reopening/scrolling
 function observeFeed() {
   const observer = new MutationObserver((mutations) => {
     // Debounce
     clearTimeout(observer._timeout);
     observer._timeout = setTimeout(() => {
       addFetchButtons();
+
+      // Check if friendships dialog is open
+      const dialogOpen = document.querySelector('[role="dialog"]');
+      if (dialogOpen) {
+        // Determine which list to use by checking active tab
+        const tabs = dialogOpen.querySelectorAll('[role="tab"]');
+
+        let activeList = null;
+        let isFollowersTab = false;
+        let isFollowingTab = false;
+
+        tabs.forEach(tab => {
+          const isSelected = tab.getAttribute('aria-selected') === 'true';
+          const labelDiv = tab.querySelector('[aria-label]');
+          const ariaLabel = labelDiv?.getAttribute('aria-label') || '';
+
+          if (isSelected) {
+            if (ariaLabel === '粉絲' || ariaLabel === 'Followers') {
+              activeList = lastFollowersList;
+              isFollowersTab = true;
+            } else if (ariaLabel === '追蹤中' || ariaLabel === 'Following') {
+              activeList = lastFollowingList;
+              isFollowingTab = true;
+            }
+          }
+        });
+
+        // Fallback to the most recent list if we can't determine
+        if (!activeList || activeList.length === 0) {
+          activeList = lastFriendshipsList;
+        }
+
+        if (activeList && activeList.length > 0 && (isFollowersTab || isFollowingTab)) {
+          // Check for user rows without badges (newly loaded from scroll)
+          const allUserLinks = dialogOpen.querySelectorAll('a[href^="/@"]');
+          let unbadgedCount = 0;
+
+          allUserLinks.forEach(link => {
+            const href = link.getAttribute('href');
+            const username = href?.match(/^\/@([\w.]+)/)?.[1];
+
+            if (username) {
+              // Find the parent row
+              let parent = link.parentElement;
+              for (let i = 0; i < 15 && parent; i++) {
+                if (parent.getAttribute && parent.getAttribute('data-pressable-container') === 'true') {
+                  // Check if this row already has a badge or button
+                  const hasBadge = parent.querySelector('.threads-friendships-location-badge') ||
+                                   parent.querySelector('.threads-friendships-fetch-btn');
+
+                  if (!hasBadge) {
+                    unbadgedCount++;
+                    // Find the user data
+                    const userData = activeList.find(u => u.username === username);
+
+                    if (userData) {
+                      // We have the user data with pk from GraphQL
+                      injectLocationUIForUser(username, userData.pk);
+                    } else {
+                      // User not in our GraphQL list - try to get user ID from injected script
+                      // Request user ID lookup via postMessage
+                      const requestId = Math.random().toString(36).substring(7);
+                      const getUserIdPromise = new Promise((resolve) => {
+                        const handler = (event) => {
+                          if (event.data?.type === 'threads-userid-response' && event.data?.requestId === requestId) {
+                            window.removeEventListener('message', handler);
+                            resolve(event.data.userId);
+                          }
+                        };
+                        window.addEventListener('message', handler);
+                        window.postMessage({
+                          type: 'threads-userid-request',
+                          requestId: requestId,
+                          username: username
+                        }, '*');
+                        setTimeout(() => {
+                          window.removeEventListener('message', handler);
+                          resolve(null);
+                        }, 100);
+                      });
+
+                      getUserIdPromise.then(userId => {
+                        if (userId) {
+                          injectLocationUIForUser(username, userId);
+                        }
+                      });
+                    }
+                  }
+                  break;
+                }
+                parent = parent.parentElement;
+              }
+            }
+          });
+
+        }
+      }
     }, 500);
   });
 
@@ -627,7 +1065,6 @@ function init() {
       for (const [username, data] of Object.entries(cachedUserIds)) {
         userIdMap[username] = data.userId;
       }
-      console.log(`[Threads Extractor] Loaded ${Object.keys(userIdMap).length} cached user IDs`);
       // Pass to injected script
       window.postMessage({ type: 'threads-load-userid-cache', data: userIdMap }, '*');
     }
