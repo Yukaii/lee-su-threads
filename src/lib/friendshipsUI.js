@@ -4,6 +4,7 @@
  */
 
 import { findUsernameContainer } from './domHelpers.js';
+import { isNewUser } from './dateParser.js';
 
 // Cross-browser compatibility
 const browserAPI = typeof browser !== 'undefined' ? browser : chrome;
@@ -263,6 +264,17 @@ function createLocationBadge(profileInfo) {
   if (profileInfo.joined) {
     const joinedLabel = browserAPI.i18n.getMessage('joined') || 'Joined';
     badge.title = `${joinedLabel}: ${profileInfo.joined}`;
+  }
+
+  // Add [NEW] label for new users (skip if verified)
+  const isNew = isNewUser(profileInfo.joined);
+  if (isNew && !profileInfo.isVerified) {
+    const newLabel = browserAPI.i18n.getMessage('newUser') || 'NEW';
+    const newTag = document.createElement('span');
+    newTag.className = 'threads-new-user-tag';
+    newTag.textContent = `[${newLabel}]`;
+    newTag.style.marginLeft = '4px';
+    badge.appendChild(newTag);
   }
 
   return badge;
