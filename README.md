@@ -38,6 +38,8 @@
 <details>
 <summary>手動安裝（開發者）</summary>
 
+> **開發者注意：** 若要了解如何貢獻程式碼或設定 CI 自動簽署，請參閱 [CONTRIBUTING.md](CONTRIBUTING.md)
+
 **從 Release 安裝：**
 
 1. 前往 [Releases 頁面](https://github.com/meettomorrow/lee-su-threads/releases) 下載最新版本的 ZIP 檔
@@ -118,6 +120,8 @@ A browser extension (Chrome & Firefox) that automatically displays location info
 
 <details>
 <summary>Manual Installation (Developers)</summary>
+
+> **For Contributors:** See [CONTRIBUTING.md](CONTRIBUTING.md) for development workflow and CI signing setup.
 
 **From Release:**
 
