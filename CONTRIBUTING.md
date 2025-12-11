@@ -18,6 +18,15 @@ npm test              # Run tests once
 npm run test:watch    # Run tests in watch mode
 ```
 
+## Version Management
+
+**During development, DO NOT update version numbers in `src/manifest.json` or `src/manifest.firefox.json`.**
+
+The build system automatically handles versioning:
+- **Development builds** (`npm run build:watch`): Auto-increments version from latest git tag (e.g., `v0.3.7` → `0.3.8`)
+- **Production builds** (`npm run build`): Uses exact version from source manifests
+- **Only update manifest versions when creating a release** (see Release Process below)
+
 ## Release Process
 
 ### Firefox Self-Distribution Setup

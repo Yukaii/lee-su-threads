@@ -1,7 +1,33 @@
 import * as esbuild from 'esbuild';
-import { copyFile, mkdir, cp } from 'fs/promises';
+import { copyFile, mkdir, cp, readFile, writeFile } from 'fs/promises';
+import { execSync } from 'child_process';
 
 const isWatch = process.argv.includes('--watch');
+const isDev = isWatch || process.env.NODE_ENV === 'development';
+
+// Get version from git tags
+function getGitVersion() {
+  try {
+    // Get the latest git tag (e.g., "v0.3.7" or "0.3.7")
+    const tag = execSync('git describe --tags --abbrev=0', { encoding: 'utf-8' }).trim();
+    // Remove 'v' prefix if present
+    return tag.startsWith('v') ? tag.slice(1) : tag;
+  } catch (error) {
+    console.warn('Warning: Could not get git version, using manifest version');
+    return null;
+  }
+}
+
+// Increment the patch version (e.g., "0.3.7" -> "0.3.8")
+function incrementVersion(version) {
+  const parts = version.split('.');
+  if (parts.length >= 3) {
+    parts[2] = String(Number(parts[2]) + 1);
+    return parts.join('.');
+  }
+  // If version format is unexpected, just append .1
+  return `${version}.1`;
+}
 
 // Build JavaScript bundles (shared between Chrome and Firefox)
 const buildOptions = {
@@ -43,11 +69,22 @@ async function copyStaticFilesForBrowser(browser) {
   }
 
   // Copy appropriate manifest (rename to manifest.json for both)
-  if (browser === 'chrome') {
-    await copyFile('src/manifest.json', `${distDir}/manifest.json`);
-  } else if (browser === 'firefox') {
-    await copyFile('src/manifest.firefox.json', `${distDir}/manifest.json`);
+  const sourceManifest = browser === 'chrome' ? 'src/manifest.json' : 'src/manifest.firefox.json';
+  const manifestContent = await readFile(sourceManifest, 'utf-8');
+  const manifest = JSON.parse(manifestContent);
+
+  // In development, use git tag version + 1 (e.g., "0.3.7" -> "0.3.8")
+  if (isDev) {
+    const gitVersion = getGitVersion();
+    if (gitVersion) {
+      manifest.version = incrementVersion(gitVersion);
+    } else {
+      // Fallback: increment manifest version
+      manifest.version = incrementVersion(manifest.version);
+    }
   }
+
+  await writeFile(`${distDir}/manifest.json`, JSON.stringify(manifest, null, 2));
 
   // Copy HTML and CSS
   await copyFile('src/popup.html', `${distDir}/popup.html`);

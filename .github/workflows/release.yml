@@ -10,6 +10,10 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+    env:
+      # Set to 'true' in repository settings to enable Firefox signing
+      # Requires FIREFOX_API_KEY and FIREFOX_API_SECRET to be configured
+      ENABLE_FIREFOX_SIGNING: ${{ vars.ENABLE_FIREFOX_SIGNING || 'false' }}
 
     steps:
       - uses: actions/checkout@v6
@@ -36,7 +40,7 @@ jobs:
         run: bash scripts/package.sh
 
       - name: Sign Firefox extension (self-distributed)
-        if: secrets.FIREFOX_API_KEY != ''
+        if: env.ENABLE_FIREFOX_SIGNING == 'true'
         timeout-minutes: 5
         run: |
           npx web-ext sign \
@@ -48,14 +52,14 @@ jobs:
             --no-input
 
       - name: Rename signed Firefox extension
-        if: secrets.FIREFOX_API_KEY != ''
+        if: env.ENABLE_FIREFOX_SIGNING == 'true'
         run: |
           if [ -f dist-zip/lee_su_threads-*.xpi ]; then
             mv dist-zip/lee_su_threads-*.xpi dist-zip/lee-su-threads-firefox-v${VERSION}-signed.xpi
           fi
 
       - name: Validate signed extension exists
-        if: secrets.FIREFOX_API_KEY != ''
+        if: env.ENABLE_FIREFOX_SIGNING == 'true'
         run: |
           if [ ! -f "dist-zip/lee-su-threads-firefox-v${VERSION}-signed.xpi" ]; then
             echo "Error: Signed extension not found"
@@ -63,12 +67,12 @@ jobs:
           fi
 
       - name: Generate update manifest
-        if: secrets.FIREFOX_API_KEY != ''
+        if: env.ENABLE_FIREFOX_SIGNING == 'true'
         run: |
           sed "s/VERSION_PLACEHOLDER/$VERSION/g" updates.json.template > dist-zip/updates.json
 
       - name: Create GitHub Release (with signed Firefox)
-        if: secrets.FIREFOX_API_KEY != ''
+        if: env.ENABLE_FIREFOX_SIGNING == 'true'
         uses: softprops/action-gh-release@v1
         with:
           files: |
@@ -83,7 +87,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Create GitHub Release (without signing)
-        if: secrets.FIREFOX_API_KEY == ''
+        if: env.ENABLE_FIREFOX_SIGNING != 'true'
         uses: softprops/action-gh-release@v1
         with:
           files: |
