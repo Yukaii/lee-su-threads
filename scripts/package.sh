@@ -59,6 +59,6 @@ echo ""
 echo "Chrome:  dist-zip/lee-su-threads-chrome-v${VERSION}.zip"
 
 echo "Firefox (AMO): dist-zip/lee-su-threads-firefox-v${VERSION}-amo.zip"
-if [ -d "dist/firefox" ] && [ -d "dist/firefox-amo" ]; then
-  echo "Firefox (Self-hosted): Will be signed and created as .xpi in CI"
+if [ -d "dist/firefox-direct" ]; then
+  echo "Firefox (Direct Install): Will be signed and created as .xpi in CI"
 fi

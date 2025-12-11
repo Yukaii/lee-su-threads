@@ -88,7 +88,7 @@ Use `browserAPI.storage`, `browserAPI.runtime`, `browserAPI.i18n`, etc.
 
 ### Version Management
 
-**IMPORTANT:** Do NOT manually update version numbers in `src/manifest.json` or `src/manifest.firefox.json` during development.
+**IMPORTANT:** Do NOT manually update version numbers in `src/manifest.json`, `src/manifest.firefox.json`, or `src/manifest.firefox-direct.json` during development.
 
 - **Development builds** (`npm run build:watch`): Automatically uses git tag version + 1 (e.g., if latest tag is `v0.3.7`, dev build shows `0.3.8`)
 - **Production builds** (`npm run build`): Uses the version from source manifests
