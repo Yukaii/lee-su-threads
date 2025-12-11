@@ -76,6 +76,14 @@
   #threads-dismiss-toast {
     color: #fde68a;
   }
+
+  #threads-open-settings-btn {
+    background: #d97706;
+  }
+
+  #threads-open-settings-btn:hover {
+    background: #b45309;
+  }
 }
 
 @keyframes slideInRight {
