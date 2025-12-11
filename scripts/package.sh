@@ -42,19 +42,19 @@ echo "🦊 Building Firefox extension..."
 if [ -d "dist/firefox-amo" ]; then
   echo "📦 Building AMO version (for unlisted review)..."
   cd dist/firefox-amo
-  zip -r "$PROJECT_ROOT/dist-zip/lee-su-threads-firefox-v${VERSION}.zip" . -x "*.DS_Store" "*.map"
+  zip -r "$PROJECT_ROOT/dist-zip/lee-su-threads-firefox-v${VERSION}-amo.zip" . -x "*.DS_Store" "*.map"
   cd "$PROJECT_ROOT"
 
-  echo "✅ Created dist-zip/lee-su-threads-firefox-v${VERSION}.zip (AMO unlisted)"
-  echo "📊 Size: $(du -h dist-zip/lee-su-threads-firefox-v${VERSION}.zip | cut -f1)"
+  echo "✅ Created dist-zip/lee-su-threads-firefox-v${VERSION}-amo.zip (AMO unlisted)"
+  echo "📊 Size: $(du -h dist-zip/lee-su-threads-firefox-v${VERSION}-amo.zip | cut -f1)"
 else
-  # Fallback: use regular firefox build
+  # Fallback: use regular firefox build (treat as AMO version)
   cd dist/firefox
-  zip -r "$PROJECT_ROOT/dist-zip/lee-su-threads-firefox-v${VERSION}.zip" . -x "*.DS_Store" "*.map"
+  zip -r "$PROJECT_ROOT/dist-zip/lee-su-threads-firefox-v${VERSION}-amo.zip" . -x "*.DS_Store" "*.map"
   cd "$PROJECT_ROOT"
 
-  echo "✅ Created dist-zip/lee-su-threads-firefox-v${VERSION}.zip"
-  echo "📊 Size: $(du -h dist-zip/lee-su-threads-firefox-v${VERSION}.zip | cut -f1)"
+  echo "✅ Created dist-zip/lee-su-threads-firefox-v${VERSION}-amo.zip (fallback)"
+  echo "📊 Size: $(du -h dist-zip/lee-su-threads-firefox-v${VERSION}-amo.zip | cut -f1)"
 fi
 
 echo ""
@@ -62,11 +62,7 @@ echo "🎉 All builds complete!"
 echo ""
 echo "Chrome:  dist-zip/lee-su-threads-chrome-v${VERSION}.zip"
 
-if [ -d "dist/firefox-amo" ]; then
-  echo "Firefox (AMO): dist-zip/lee-su-threads-firefox-v${VERSION}.zip"
-  if [ -d "dist/firefox" ]; then
-    echo "Firefox (Self-hosted): Will be signed and created as .xpi in CI"
-  fi
-else
-  echo "Firefox: dist-zip/lee-su-threads-firefox-v${VERSION}.zip"
+echo "Firefox (AMO): dist-zip/lee-su-threads-firefox-v${VERSION}-amo.zip"
+if [ -d "dist/firefox" ] && [ -d "dist/firefox-amo" ]; then
+  echo "Firefox (Self-hosted): Will be signed and created as .xpi in CI"
 fi
