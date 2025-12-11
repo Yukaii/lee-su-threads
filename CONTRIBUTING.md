@@ -9,7 +9,7 @@ Thank you for your interest in contributing! This guide covers the development w
 3. Run `npm run build` to build both Chrome and Firefox versions
 4. Load the extension:
    - **Chrome**: Navigate to `chrome://extensions/`, enable Developer mode, click "Load unpacked", select `dist/chrome/`
-   - **Firefox**: Navigate to `about:debugging#/runtime/this-firefox`, click "Load Temporary Add-on", select `dist/firefox/manifest.json`
+   - **Firefox**: Navigate to `about:debugging#/runtime/this-firefox`, click "Load Temporary Add-on", select `dist/firefox-direct/manifest.json`
 
 ## Testing
 
