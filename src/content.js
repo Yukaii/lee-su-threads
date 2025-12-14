@@ -5,6 +5,8 @@ import { displayProfileInfo, autoFetchProfile, createProfileBadge } from './lib/
 
 'use strict';
 
+console.log('[Threads Extractor] 🚀 content.js is loading...');
+
 // Cross-browser compatibility: use browser.* API if available (Firefox), fallback to chrome.*
 const browserAPI = typeof browser !== 'undefined' ? browser : chrome;
 
@@ -176,10 +178,10 @@ function showRateLimitToast() {
   toast.appendChild(dismissBtn);
   document.body.appendChild(toast);
 
-  // Open settings button - opens onboarding page with instructions
+  // Open settings button - opens popup in a new tab
   document.getElementById('threads-open-settings-btn').addEventListener('click', () => {
-    // Send message to background script to open the onboarding page
-    browserAPI.runtime.sendMessage({ type: 'OPEN_ONBOARDING' });
+    // Send message to background script to open popup.html in a new tab
+    browserAPI.runtime.sendMessage({ type: 'OPEN_POPUP_TAB' });
   });
 
   // Dismiss button
@@ -556,9 +558,79 @@ function observeFeed() {
   }, { once: true });
 }
 
+// Detect Threads theme and store it for popup
+let themeObserver = null;
+
+function detectThreadsTheme() {
+  function updateTheme() {
+    // Check multiple possible attributes/classes that Threads might use
+    const html = document.documentElement;
+    const body = document.body;
+
+    // Try different detection methods
+    let theme = null;
+
+    // Method 1: data-color-mode attribute
+    const colorMode = html.getAttribute('data-color-mode');
+    if (colorMode) {
+      theme = colorMode === 'dark' ? 'dark' : 'light';
+    }
+
+    // Method 2: Check computed background color
+    if (!theme && body) {
+      const bgColor = window.getComputedStyle(body).backgroundColor;
+      // Parse RGB and check if it's dark (low values) or light (high values)
+      const rgb = bgColor.match(/\d+/g);
+      if (rgb && rgb.length >= 3) {
+        const brightness = (parseInt(rgb[0]) + parseInt(rgb[1]) + parseInt(rgb[2])) / 3;
+        theme = brightness < 128 ? 'dark' : 'light';
+      }
+    }
+
+    if (theme) {
+      browserAPI.storage.local.set({ threadsTheme: theme });
+    }
+
+    return theme;
+  }
+
+  // Initial detection
+  setTimeout(updateTheme, 1000); // Wait for page to fully load
+
+  // Watch for any attribute changes on html and body with debouncing
+  let updateTimeout = null;
+  themeObserver = new MutationObserver(() => {
+    clearTimeout(updateTimeout);
+    updateTimeout = setTimeout(updateTheme, 100); // Debounce for 100ms
+  });
+
+  themeObserver.observe(document.documentElement, {
+    attributes: true,
+    attributeFilter: ['data-color-mode', 'data-color-scheme', 'data-theme', 'class', 'style']
+  });
+
+  if (document.body) {
+    themeObserver.observe(document.body, {
+      attributes: true,
+      attributeFilter: ['class', 'style']
+    });
+  }
+}
+
+// Cleanup theme observer on page unload
+window.addEventListener('beforeunload', () => {
+  if (themeObserver) {
+    themeObserver.disconnect();
+    themeObserver = null;
+  }
+}, { once: true });
+
 // Initialize
 function init() {
   console.log('[Threads Extractor] Content script loaded');
+
+  // Detect and track Threads theme
+  detectThreadsTheme();
 
   // Inject network interceptor
   injectScript();
