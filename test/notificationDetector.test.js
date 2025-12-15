@@ -3,7 +3,8 @@ import {
   NOTIFICATION_TYPES,
   isSingleUserNotification,
   getNotificationType,
-  extractIconColor
+  extractIconColor,
+  findIconElement
 } from '../src/lib/notificationDetector.js';
 
 describe('notificationDetector', () => {
@@ -157,6 +158,100 @@ describe('notificationDetector', () => {
 
       const color = extractIconColor(mockElement);
       expect(color).toBe('#fe7900');
+    });
+  });
+
+  describe('findIconElement', () => {
+    it('should find icon element in the container itself', () => {
+      const iconElement = { style: { getPropertyValue: () => '#24c3ff' } };
+      const mockContainer = {
+        querySelector: (selector) => {
+          if (selector === '[style*="--x-backgroundColor"]') return iconElement;
+          return null;
+        }
+      };
+
+      const result = findIconElement(mockContainer);
+      expect(result).toBe(iconElement);
+    });
+
+    it('should find icon element in parent containers', () => {
+      const iconElement = { style: { getPropertyValue: () => '#24c3ff' } };
+      const grandparent = {
+        querySelector: (selector) => {
+          if (selector === '[style*="--x-backgroundColor"]') return iconElement;
+          return null;
+        },
+        parentElement: null
+      };
+      const parent = {
+        querySelector: () => null,
+        parentElement: grandparent
+      };
+      const container = {
+        querySelector: () => null,
+        parentElement: parent
+      };
+
+      const result = findIconElement(container);
+      expect(result).toBe(iconElement);
+    });
+
+    it('should respect maxLevels parameter', () => {
+      const iconElement = { style: { getPropertyValue: () => '#24c3ff' } };
+      const level3 = {
+        querySelector: (selector) => {
+          if (selector === '[style*="--x-backgroundColor"]') return iconElement;
+          return null;
+        },
+        parentElement: null
+      };
+      const level2 = { querySelector: () => null, parentElement: level3 };
+      const level1 = { querySelector: () => null, parentElement: level2 };
+      const container = { querySelector: () => null, parentElement: level1 };
+
+      // Should not find it with maxLevels=2
+      const resultLimited = findIconElement(container, 2);
+      expect(resultLimited).toBeNull();
+
+      // Should find it with maxLevels=5 (default)
+      const resultDefault = findIconElement(container);
+      expect(resultDefault).toBe(iconElement);
+
+      // Should find it with maxLevels=10
+      const resultExtended = findIconElement(container, 10);
+      expect(resultExtended).toBe(iconElement);
+    });
+
+    it('should return null if no icon element found', () => {
+      const mockContainer = {
+        querySelector: () => null,
+        parentElement: {
+          querySelector: () => null,
+          parentElement: null
+        }
+      };
+
+      const result = findIconElement(mockContainer);
+      expect(result).toBeNull();
+    });
+
+    it('should return null for null container', () => {
+      expect(findIconElement(null)).toBeNull();
+      expect(findIconElement(undefined)).toBeNull();
+    });
+
+    it('should stop searching when parentElement is null', () => {
+      const mockContainer = {
+        querySelector: () => null,
+        parentElement: {
+          querySelector: () => null,
+          parentElement: null
+        }
+      };
+
+      const result = findIconElement(mockContainer, 10);
+      expect(result).toBeNull();
     });
   });
 });

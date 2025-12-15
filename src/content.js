@@ -336,7 +336,7 @@ const visibilityObserver = new IntersectionObserver((entries) => {
 // Detect if we're on an activity page (replies, follows, etc.)
 function isActivityPage() {
   const path = window.location.pathname;
-  return path.includes('/activity/') || path === '/activity';
+  return path === '/activity' || path.startsWith('/activity/');
 }
 
 // Add "Get Info" buttons after the time element on posts
